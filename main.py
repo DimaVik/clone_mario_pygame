@@ -1,14 +1,29 @@
 import pygame
 import os
 import sys
+from pygame.locals import *
+import time
 
-size = (3392, 224)
+
+total_level_width = 3392
+total_level_height = 224
+size = w, h = (600, 224)  # (3392, 224)
 FPS = 60
+speed = 3
+jump = 7
+gravity = 0.35
 
-pygame.init() # Инициация PyGame, обязательная строчка 
-pygame.display.set_caption("Super Mario") # Пишем в шапку
+# Инициация PyGame, обязательная строчка
+pygame.init()
+pygame.font.init()
+# Пишем в шапку
+
+gg = pygame.font.Font('data\\font\Fixedsys500c.ttf', 50)
+
+pygame.display.set_caption("Super Mario") 
 screen = pygame.display.set_mode(size)
 clock = pygame.time.Clock()
+
 
 def load_image(name, colorkey=None):
     fullname = os.path.join(name)
@@ -23,26 +38,122 @@ def load_image(name, colorkey=None):
         image.set_colorkey(colorkey)
     return image
 
+
+'''def display_time(time_s):
+    # time string with tents of seconds
+    time_str =  str(int(time_s*10) / 10)  
+    label = myfont15.render(f"Time : {time_str}", 1, red)
+    apGame.blit(label, (20, 20))'''
+
+def terminate():
+    label = gg.render("Game Over", 1, (255, 0, 0))
+    screen.blit(label, (0, 0))
+
+
+def win():
+    label = gg.render("Winner", 1, (0, 255, 0))
+    screen.blit(label, (0, 0))
+
+
+class Camera:
+    # зададим начальный сдвиг камеры
+    def __init__(self):
+        self.dx = 0
+        self.total = 0
+
+    # сдвинуть объект obj на смещение камеры
+    def apply(self, obj):
+        obj.rect.x += self.dx
+
+    # позиционировать камеру на объекте target
+
+    def update(self, target):
+        self.dx = -(target.rect.x - w // 2)
+        if self.total + self.dx > 0:
+            self.dx = 0
+        elif self.total < -(total_level_width) + w + 3:
+            self.dx = 0
+        else:
+            self.total += self.dx
+
+
 class Mario(pygame.sprite.Sprite):
-    def __init__(self, pos, fl):
-        super().__init__()
-        self.image = load_image("data\\sprites\\mario_sprites\\mario_stand.png", -1)
+    def __init__(self, fl):
+        super().__init__(player, all_sprites)
+        self.image = load_image(
+            "data\\sprites\\mario_sprites\\mario_stand.png", -1)
         self.image.convert()
         self.rect = self.image.get_rect()
         # вычисляем маску для эффективного сравнения
         self.mask = pygame.mask.from_surface(self.image)
-        self.rect.x = pos[0]
-        self.rect.y = pos[1]
+        self.rect.x = w // 2 + 1
+        self.rect.y = 100
+        self.xvel = 0
+        self.yvel = 0
+        self.on_ground = False
 
-    def update(self, fl):
-        # если ещё в небе
-        if not pygame.sprite.collide_mask(self, fl):
-            self.rect = self.rect.move(0, 1)
+    def update(self, l, r, u, fl):
+        if up:
+            # прыгаем, только когда можем оттолкнуться от земли
+            if self.on_ground:
+                self.yvel = -jump
+
+        if left:
+            self.xvel = -speed
+
+        if right:
+            # Право = x + n
+            self.xvel = speed  
+
+        if not(left or right):
+            # стоим, когда нет указаний идти
+            self.xvel = 0
+
+        if not self.on_ground:
+            self.yvel += gravity
+
+        self.on_ground = False 
+        # Мы не знаем, когда мы на земле
+        self.rect.y += self.yvel
+        self.collide(0, self.yvel, fl)
+
+        self.rect.x += self.xvel 
+        # переносим свои положение на xvel
+        self.collide(self.xvel, 0, fl)
     
+    def pos(self):
+        return [self.rect.x, self.rect.y]
+
+    def collide(self, xvel, yvel, fl):
+        # если есть пересечение платформы с игроком
+        if pygame.sprite.collide_mask(self, fl):
+
+            if xvel > 0:
+                self.rect.x -= self.xvel
+                self.xvel = 0                   
+                # если движется вправо ==> то не движется вправо
+
+            if xvel < 0:                      
+                # если движется влево ==> то не движется влево
+                self.rect.x -= self.xvel
+                self.xvel = 0
+            if yvel > 0:                      
+                # если падает вниз ==> то не падает вниз
+                self.on_ground = True
+                self.rect.y -= self.yvel - 1        
+                # и становится на что-то твердое
+                self.yvel = 0
+
+            if yvel < 0:
+                # если движется вверх# то не движется вверх
+                self.rect.y += self.yvel - 1
+                # и энергия прыжка пропадает
+                self.yvel = 0
+
 
 class BG(pygame.sprite.Sprite):
     def __init__(self, location=[0, 0]):
-        super().__init__()
+        super().__init__(tiles_group, all_sprites)
         self.image = load_image("data\\sprites\\bg.jpg")
         self.rect = self.image.get_rect()
         self.rect.left, self.rect.top = location
@@ -50,21 +161,26 @@ class BG(pygame.sprite.Sprite):
 
 class Floor(pygame.sprite.Sprite):
     def __init__(self, location=[0, 0]):
-        super().__init__()
-        self.image = load_image("data\\sprites\\bg_floor.png", -1)
+        super().__init__(tiles_group, all_sprites)
+        self.image = load_image("data\\sprites\\bg_fl.png", -1)
         self.image.convert()
         self.rect = self.image.get_rect()
         self.rect.left, self.rect.top = location
-        # crate mask of floor
+        # вычисляем маску для эффективного сравнения
         self.mask = pygame.mask.from_surface(self.image)
 
 
 all_sprites = pygame.sprite.Group()
+tiles_group = pygame.sprite.Group()
+player = pygame.sprite.Group()
 bg = BG()
 fl = Floor()
-all_sprites.add(bg)
-all_sprites.add(fl)
+mario = Mario(fl)
+tiles_group.add(bg)
+tiles_group.add(fl)
+player.add(mario)
 
+camera = Camera()
 # Цикл игры
 running = True
 while running:
@@ -72,19 +188,44 @@ while running:
     clock.tick(FPS)
     # Ввод процесса (события)
     for event in pygame.event.get():
-        if event.type == pygame.MOUSEBUTTONDOWN:
-            pers = Mario(event.pos, fl)
-            all_sprites.add(pers)
         # проверка для закрытия окна
         if event.type == pygame.QUIT:
             running = False
 
+        keystate = pygame.key.get_pressed()
+        if keystate[pygame.K_UP]:
+            up = True
+        else:
+            up = False
+        if keystate[pygame.K_LEFT]:
+            left = True
+        else:
+            left = False
+        if keystate[pygame.K_RIGHT]:
+            right = True
+        else:
+            right = False
+
     # Обновление
-    all_sprites.draw(screen)
-    all_sprites.update(fl)
+    tiles_group.draw(screen)
+    player.draw(screen)
+    camera.update(mario)
+    # изменяем ракурс камеры
+    # обновляем положение всех спрайтов
+    for sprite in all_sprites:
+        camera.apply(sprite)
+    player.update(left, up, right, fl)
+    x, y = mario.pos()
+    if y >= h - 2:
+        terminate()
+        running = False
+    if x >= w - 150:
+        win()
+        running = False
     # Рендеринг
     # После отрисовки всего, переворачиваем экран
     pygame.display.flip()
+    if not running:
+        time.sleep(3)
 
 pygame.quit()
-        
