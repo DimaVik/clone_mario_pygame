@@ -238,6 +238,7 @@ while running:
     for event in pygame.event.get():
         # проверка для закрытия окна
         if event.type == pygame.QUIT:
+            terminate()
             running = False
 
         keystate = pygame.key.get_pressed()
