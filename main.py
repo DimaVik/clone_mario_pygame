@@ -16,11 +16,16 @@ gravity = 0.35
 # Инициация PyGame, обязательная строчка
 pygame.init()
 pygame.font.init()
-# Пишем в шапку
+pygame.mixer.init()
 
-gg = pygame.font.Font('data\\font\Fixedsys500c.ttf', 50)
 
-pygame.display.set_caption("Super Mario") 
+font1 = pygame.font.Font('data\\font\\Fixedsys500c.ttf', 120)
+music = pygame.mixer.music.load('data\\music\\01 - Super Mario Bros.mp3')
+pygame.mixer.music.play(-1, 0.0)
+game_over_sound = pygame.mixer.Sound('data\\music\\18 - Game Over (alternate).mp3')
+game_win_sound = pygame.mixer.Sound('data\\music\\04 - Area Clear.mp3')
+
+pygame.display.set_caption("Super Mario")
 screen = pygame.display.set_mode(size)
 clock = pygame.time.Clock()
 
@@ -45,14 +50,24 @@ def load_image(name, colorkey=None):
     label = myfont15.render(f"Time : {time_str}", 1, red)
     apGame.blit(label, (20, 20))'''
 
+
 def terminate():
-    label = gg.render("Game Over", 1, (255, 0, 0))
+    screen.fill((0, 0, 0))
+    label = font1.render("Game Over", 1, (255, 0, 0))
     screen.blit(label, (0, 0))
+    # остонавливаем музыку
+    pygame.mixer.music.stop()
+    #ставим музыку проиграша
+    game_over_sound.play()
 
 
 def win():
-    label = gg.render("Winner", 1, (0, 255, 0))
+    screen.fill((255, 255, 255))
+    label = font1.render("Winner", 1, (0, 255, 0))
     screen.blit(label, (0, 0))
+    # остонавливаем музыку
+    pygame.mixer.music.stop()
+    game_win_sound.play()
 
 
 class Camera:
@@ -103,7 +118,7 @@ class Mario(pygame.sprite.Sprite):
 
         if right:
             # Право = x + n
-            self.xvel = speed  
+            self.xvel = speed
 
         if not(left or right):
             # стоим, когда нет указаний идти
@@ -112,15 +127,15 @@ class Mario(pygame.sprite.Sprite):
         if not self.on_ground:
             self.yvel += gravity
 
-        self.on_ground = False 
+        self.on_ground = False
         # Мы не знаем, когда мы на земле
         self.rect.y += self.yvel
         self.collide(0, self.yvel, fl)
 
-        self.rect.x += self.xvel 
+        self.rect.x += self.xvel
         # переносим свои положение на xvel
         self.collide(self.xvel, 0, fl)
-    
+
     def pos(self):
         return [self.rect.x, self.rect.y]
 
@@ -130,17 +145,17 @@ class Mario(pygame.sprite.Sprite):
 
             if xvel > 0:
                 self.rect.x -= self.xvel
-                self.xvel = 0                   
+                self.xvel = 0
                 # если движется вправо ==> то не движется вправо
 
-            if xvel < 0:                      
+            if xvel < 0:
                 # если движется влево ==> то не движется влево
                 self.rect.x -= self.xvel
                 self.xvel = 0
-            if yvel > 0:                      
+            if yvel > 0:
                 # если падает вниз ==> то не падает вниз
                 self.on_ground = True
-                self.rect.y -= self.yvel - 1        
+                self.rect.y -= self.yvel - 1
                 # и становится на что-то твердое
                 self.yvel = 0
 
@@ -226,6 +241,6 @@ while running:
     # После отрисовки всего, переворачиваем экран
     pygame.display.flip()
     if not running:
-        time.sleep(3)
+        time.sleep(6)
 
 pygame.quit()
