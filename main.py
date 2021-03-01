@@ -43,12 +43,36 @@ def load_image(name, colorkey=None):
         image.set_colorkey(colorkey)
     return image
 
+def start_screen():
+    intro_text = ["MARIO GAME",
+                  "Rules of the game:",
+                  "Move with arrows, reach the castle",
+                  "and don't fall into the abyss",
+                  "Press any key to start playing"]
 
-'''def display_time(time_s):
-    # time string with tents of seconds
-    time_str =  str(int(time_s*10) / 10)  
-    label = myfont15.render(f"Time : {time_str}", 1, red)
-    apGame.blit(label, (20, 20))'''
+    fon = pygame.transform.scale(load_image('data\\screen\\fon.jpg'), (w, h))
+    screen.blit(fon, (0, 0))
+    font = pygame.font.Font('data\\font\\Fixedsys500c.ttf', 20)
+    text_coord = 20
+    for line in intro_text:
+        string_rendered = font.render(line, 1, pygame.Color('white'))
+        intro_rect = string_rendered.get_rect()
+        text_coord += 10
+        intro_rect.top = text_coord
+        intro_rect.x = 10
+        text_coord += intro_rect.height
+        screen.blit(string_rendered, intro_rect)
+    k = 1
+    while k:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                terminate()
+            elif event.type == pygame.KEYDOWN or \
+                    event.type == pygame.MOUSEBUTTONDOWN:
+                k = 0
+                break
+        pygame.display.flip()
+        clock.tick(FPS)
 
 
 def terminate():
@@ -59,6 +83,10 @@ def terminate():
     pygame.mixer.music.stop()
     #ставим музыку проиграша
     game_over_sound.play()
+    pygame.display.flip()
+    time.sleep(4)
+    pygame.quit()
+
 
 
 def win():
@@ -68,6 +96,9 @@ def win():
     # остонавливаем музыку
     pygame.mixer.music.stop()
     game_win_sound.play()
+    pygame.display.flip()
+    time.sleep(6)
+    pygame.quit()
 
 
 class Camera:
@@ -194,9 +225,11 @@ mario = Mario(fl)
 tiles_group.add(bg)
 tiles_group.add(fl)
 player.add(mario)
+left, up, right = False, False, False
 
 camera = Camera()
 # Цикл игры
+start_screen()
 running = True
 while running:
     # Держим цикл на правильной скорости
@@ -232,15 +265,13 @@ while running:
     player.update(left, up, right, fl)
     x, y = mario.pos()
     if y >= h - 2:
+        running = False
         terminate()
-        running = False
     if x >= w - 150:
-        win()
         running = False
+        win()
     # Рендеринг
     # После отрисовки всего, переворачиваем экран
     pygame.display.flip()
-    if not running:
-        time.sleep(6)
 
 pygame.quit()
